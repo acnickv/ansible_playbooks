@@ -1,0 +1,1 @@
+%ansible_svc ALL=(ALL) NOPASSWD: ALL

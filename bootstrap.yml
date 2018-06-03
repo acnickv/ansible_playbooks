@@ -1,0 +1,57 @@
+# Establish a new default service account with only SSH credentials to access this raspbian image
+# This will be used for all future work
+
+- hosts: all
+  user: pi
+  gather_facts: 'false'
+  become: 'true'
+  become_user: 'root'
+
+  tasks:
+     - name: create ansible_svc group
+       group:
+          name: 'ansible_svc'
+          gid: 502
+          state: 'present'
+
+     - name: create ansible_svc account
+       user:
+          name: 'ansible_svc'
+          uid: 502
+          group: 'ansible_svc'
+          createhome: 'yes'
+          shell: '/bin/bash'
+          state: 'present'
+          system: 'yes'
+    
+     - name: upload ssh key for ansible_svc account
+       authorized_key:
+          user: 'ansible_svc'
+          state: 'present'
+          key: "{{ lookup( 'file', './ansible_svc.pub' ) }}"
+
+     - name: configure sudoers for ansible_svc account
+       copy:
+          src: './050-ansible_svc'
+          dest: '/etc/sudoers.d/'
+          owner: 'root'
+          group: 'root'
+          mode: 0440
+
+# Now that the ansible_svc account has been established, the default 'pi' account should be removed.
+# Since it is the default means of accessing a raspbian image, it represents a substantial security 
+# vulnerability.
+
+- hosts: all
+  user: ansible_svc
+  gather_facts: 'false'
+  become: 'true'
+  become_user: 'root'
+
+  tasks:
+     - name: remove legacy 'pi' account
+       user:
+          name: 'pi'
+          force: 'yes'
+          remove: 'yes'
+          state: 'absent'
